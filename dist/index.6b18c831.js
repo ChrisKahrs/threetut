@@ -537,7 +537,7 @@ var _orbitControlsJs = require("three/examples/jsm/controls/OrbitControls.js");
 var _gltfloaderJs = require("three/examples/jsm/loaders/GLTFLoader.js");
 var _datGui = require("dat.gui");
 var model = new _three.Object3D();
-const airplaneURL = new URL(require("71962dec55497752"));
+const airplaneURL = new URL(require("222a4e0e0b751697"));
 const renderer = new _three.WebGLRenderer();
 // renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setSize(200, 200);
@@ -571,7 +571,7 @@ scene.add(gridHelper);
 //     rotateX: 0
 // }
 // gui.add(options, 'rotateX', 0, 1);
-const ambientLight = new _three.AmbientLight(0x333333);
+const ambientLight = new _three.AmbientLight(0xffffff, 1);
 scene.add(ambientLight);
 const spotLight = new _three.SpotLight(0xffffff, 0.8);
 spotLight.position.set(-100, 100, 0);
@@ -594,23 +594,127 @@ assetLoader.load(airplaneURL.href, function(gltf) {
     console.error(error);
 });
 renderer.render(scene, camera);
-function init() {
-    window.addEventListener("message", update_3dpitch, false);
-}
-window.onload = init;
-function update_3dpitch() {
-    data = JSON.parse(event.data);
+function update_3dpitch(data) {
+    console.log("data: " + data);
     model.rotateX(data["state"]["aircraftPitch"] * 10 * 0.0055);
-    console.log("event: " + event);
+    console.log("event: " + data);
     renderer.render(scene, camera);
 }
 function animate(time) {
-    model.rotateX(options.rotateX);
+    // model.rotateX(options.rotateX)
     renderer.render(scene, camera);
 }
 renderer.setAnimationLoop(animate);
+// Grab any URL parameters that were provided
+const params = new URLSearchParams(window.location.search);
+const darkMode = params.get("_theme") === "dark";
+function init() {
+    // Adjust the visualizer colors based upon the selected theme 
+    setTheme();
+    // Add an event listener to catch messages from Bonsai
+    window.addEventListener("message", updateVisualizer, false);
+    const bgImg = document.getElementById("bgImg");
+    bgImg.setAttribute("transform", "translate (50,50)");
+}
+// Run the init() function when the window loads
+document.addEventListener("DOMContentLoaded", init);
+function setTheme() {
+    // Adjust the visualizer colors based upon the selected theme 
+    if (darkMode) {
+        document.body.style.backgroundColor = "#333";
+        document.body.style.color = "#fff";
+    } else {
+        document.body.style.backgroundColor = "#fff";
+        document.body.style.color = "#000";
+    }
+}
+// angle = 0;
+// lift = 0;
+// function updateVisualizer(liftx, rot) {
+//     const bgImg = document.getElementById('bgImg');
+//     angle += rot;
+//     lift += liftx
+//     let stringy = 'translate (50,' + (50 + lift) + ') rotate(' + (angle) + ',100,100)';
+//     bgImg.setAttribute("transform", stringy);
+// }
+function updateVisualizer() {
+    // const jsonStateBox = document.getElementById('jsonStateBox');
+    const jsonActionBox = document.getElementById("jsonActionBox");
+    const jsonRewardBox = document.getElementById("jsonRewardBox");
+    const airspeed = document.getElementById("airspeed");
+    const airspeedDelta = document.getElementById("airspeedDelta");
+    const altitudeDelta = document.getElementById("altitudeDelta");
+    const altitude = document.getElementById("altitude");
+    const altimeter = document.getElementById("altimeter");
+    const pitch_roll = document.getElementById("pitch_roll");
+    const bgImg = document.getElementById("bgImg");
+    const textElement = document.getElementById("text");
+    const thousandElement = document.getElementById("thousand_hand");
+    const tenThousandElement = document.getElementById("tenThousand_hand");
+    const hundredElement = document.getElementById("hundred_hand");
+    const speedElement = document.getElementById("speed_hand");
+    const airspeedTarget = document.getElementById("airspeedTarget");
+    const altitudeTarget = document.getElementById("altitudeTarget");
+    const yaw = document.getElementById("yaw");
+    const table3d = document.getElementById("table3d");
+    var jsonData = JSON.parse(event.data);
+    height = jsonData["state"]["aircraftAltitude"];
+    speed = jsonData["state"]["aircraftSpeed"];
+    tenThousands = height % 100000 / 10000;
+    thousands = height % 10000 / 1000;
+    hundreds = height % 1000 / 100;
+    thousandElement.setAttribute("transform", `rotate(${36 * thousands})`);
+    tenThousandElement.setAttribute("transform", `rotate(${36 * tenThousands})`);
+    hundredElement.setAttribute("transform", `rotate(${36 * hundreds})`);
+    speedElement.setAttribute("transform", `rotate(${3.6 * (speed / 2.6)}, 109,104)`);
+    // Convert message to formatted JSON text for display 
+    // var jsonString = JSON.stringify(jsonData, null, 4);
+    // Radians * 180 / Math.Pi. The gauges should be able to show -180 to +180 degrees
+    pitch_angle = jsonData["state"]["aircraftPitch"] * 180 / Math.PI;
+    roll_angle = jsonData["state"]["aircraftRoll"] * 180 / Math.PI;
+    bgImg.setAttribute("transform", "translate (50," + (50 + pitch_angle) + ") rotate(" + roll_angle + ",100,100)");
+    const event2 = new CustomEvent("update3d", {
+        detail: jsonData
+    });
+    table3d.dispatchEvent(event2);
+    pitch.innerText = "Pitch: " + pitch_angle.toFixed(3);
+    roll.innerText = "Roll: " + roll_angle.toFixed(3);
+    yaw.innerText = "Yaw: " + jsonData["state"]["aircraftYaw"].toFixed(3);
+    update_3dpitch(jsonData);
+    // airspeed calculations
+    airspeed.innerText = "Actual: " + jsonData["state"]["aircraftSpeed"].toFixed(3);
+    airspeedTarget.innerText = "Target: " + jsonData["state"]["targetSpeed"].toFixed(3);
+    airspeedDeltaNum = (jsonData["state"]["aircraftSpeed"] - jsonData["state"]["targetSpeed"]).toFixed(3);
+    airspeedDeltaPercent = (airspeedDeltaNum / jsonData["state"]["targetSpeed"] * 100).toFixed(0);
+    airspeedDelta.innerText = "Delta: " + airspeedDeltaNum + " (" + airspeedDeltaPercent + "%)";
+    if (Math.abs(airspeedDeltaPercent) > 10) airspeedDelta.style.color = "red";
+    else airspeedDelta.style.color = "black";
+    // altitude calculations
+    altitude.innerText = "Actual: " + jsonData["state"]["aircraftAltitude"].toFixed(3);
+    altitudeTarget.innerText = "Target: " + jsonData["state"]["targetAltitude"].toFixed(3);
+    altitudeDeltaNum = (jsonData["state"]["aircraftAltitude"] - jsonData["state"]["targetAltitude"]).toFixed(3);
+    altitudeDeltaPercent = (altitudeDeltaNum / jsonData["state"]["targetAltitude"] * 100).toFixed(0);
+    altitudeDelta.innerText = "Delta: " + altitudeDeltaNum + " (" + altitudeDeltaPercent + "%)";
+    if (Math.abs(altitudeDeltaPercent) > 10) altitudeDelta.style.color = "red";
+    else altitudeDelta.style.color = "black";
+    jsonStateString = JSON.stringify(jsonData["state"], function(k, v) {
+        if (v instanceof Array) return JSON.stringify(v);
+        return v;
+    }, 2);
+    jsonActionString = JSON.stringify(jsonData["action"], function(k, v) {
+        if (v instanceof Array) return JSON.stringify(v);
+        return v;
+    }, 2);
+    jsonRewardString = jsonData["meta"]["reward"];
+    // Update the code block and positions of graphical elements 
+    jsonStateBox2.textContent = jsonStateString;
+    jsonActionBox2.textContent = jsonActionString;
+    jsonRewardBox2.textContent = jsonRewardString;
+    jsonActionBox.textContent = jsonActionString;
+    jsonRewardBox.textContent = jsonRewardString;
+}
 
-},{"three":"ktPTu","three/examples/jsm/controls/OrbitControls.js":"7mqRv","three/examples/jsm/loaders/GLTFLoader.js":"dVRsF","dat.gui":"k3xQk","71962dec55497752":"403b9"}],"ktPTu":[function(require,module,exports) {
+},{"three":"ktPTu","three/examples/jsm/controls/OrbitControls.js":"7mqRv","three/examples/jsm/loaders/GLTFLoader.js":"dVRsF","dat.gui":"k3xQk","222a4e0e0b751697":"4cAcG"}],"ktPTu":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 parcelHelpers.defineInteropFlag(exports);
 parcelHelpers.export(exports, "ACESFilmicToneMapping", ()=>ACESFilmicToneMapping);
@@ -34977,8 +35081,8 @@ var index = {
 };
 exports.default = index;
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"403b9":[function(require,module,exports) {
-module.exports = require("./helpers/bundle-url").getBundleURL("5tUvQ") + "airplane2.0839064e.glb" + "?" + Date.now();
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}],"4cAcG":[function(require,module,exports) {
+module.exports = require("./helpers/bundle-url").getBundleURL("5tUvQ") + "airplane_large.598f1243.glb" + "?" + Date.now();
 
 },{"./helpers/bundle-url":"lgJ39"}],"lgJ39":[function(require,module,exports) {
 "use strict";
