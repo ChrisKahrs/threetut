@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import {OrbitControls} from 'three/examples/jsm/controls/OrbitControls.js';
 import {GLTFLoader} from 'three/examples/jsm/loaders/GLTFLoader.js';
- import * as dat from 'dat.gui';
+// import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.121.1/build/three.module.js";
+// import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/controls/OrbitControls.js";
+// import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.121.1/examples/jsm/loaders/GLTFLoader.js";
+
+//  import * as dat from 'dat.gui';
 
 var model = new THREE.Object3D();
 
